@@ -1,0 +1,13 @@
+{
+  "name": "practo-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scrape Practo doctor listings + enrich real phone/website via Google Places, output CSV.",
+  "type": "commonjs",
+  "scripts": {
+    "scrape": "node scrape.js"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}

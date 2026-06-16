@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Node
+node_modules/
+
+# Playwright
+.playwright-mcp/
+
+# Output data (scraped leads are personal data — never commit)
+*.csv
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Practo Lead Scraper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#f4f1ea; --surface:#fbf9f4; --surface-2:#f0ece2;
+    --ink:#1c2522; --ink-2:#46524d; --muted:#7d877f;
+    --line:#e3ddd0; --line-2:#d6cfbf;
+    --accent:#0d7d6f; --accent-ink:#0a5f55; --accent-soft:#dcefe8;
+    --live:#1aa34a; --warn:#b5712a; --warn-soft:#f6e9d6;
+    --shadow:0 1px 2px rgba(28,37,34,.04), 0 10px 30px rgba(28,37,34,.07);
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:
+      radial-gradient(120% 80% at 100% -10%, #efe8da 0%, transparent 55%),
+      var(--paper);
+    color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.6;
+    -webkit-font-smoothing:antialiased;min-height:100vh}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 100px}
+
+  /* ---------- top bar ---------- */
+  .top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:26px}
+  .brand{display:flex;align-items:center;gap:13px}
+  .brand .logo{display:flex;flex:none;filter:drop-shadow(0 4px 10px rgba(13,125,111,.25))}
+  .brand h1{font-family:Fraunces,serif;font-weight:600;font-size:27px;letter-spacing:-.015em;margin:0;line-height:1.05}
+  .brand p{margin:1px 0 0;color:var(--muted);font-size:13px}
+  .brand p b{color:var(--accent-ink);font-weight:700}
+  .live-pill{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;
+    color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:7px 14px}
+  .led{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+  .live-pill.on .led{background:var(--live);box-shadow:0 0 0 0 rgba(26,163,74,.5);animation:pulse 1.4s infinite}
+  .live-pill.busy .led{background:var(--warn)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(26,163,74,.45)}70%{box-shadow:0 0 0 7px rgba(26,163,74,0)}100%{box-shadow:0 0 0 0 rgba(26,163,74,0)}}
+
+  /* ---------- control card ---------- */
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+  form{padding:20px}
+  .modetabs{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:4px;margin-bottom:18px}
+  .modetabs button{background:transparent;color:var(--ink-2);font-size:13.5px;padding:8px 16px;min-height:auto;border-radius:8px;font-weight:600}
+  .modetabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(28,37,34,.08)}
+  .fields{display:grid;grid-template-columns:1.5fr 1.5fr auto;gap:16px;align-items:end}
+  .fields.link{grid-template-columns:1fr auto}
+  .hide{display:none}
+  label{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:7px}
+  input[type=text],input[type=number]{width:100%;padding:12px 14px;border:1px solid var(--line-2);border-radius:10px;font-size:15px;font-family:inherit;background:#fff;color:var(--ink)}
+  input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .row-check{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--ink-2)}
+  .row-check input{width:16px;height:16px;accent-color:var(--accent)}
+  button{font-family:inherit;font-weight:600;font-size:15px;border:none;border-radius:10px;padding:12px 22px;cursor:pointer;transition:.15s;min-height:46px}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-ink)}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+  .btn-ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line-2)}
+  .btn-ghost:hover{background:var(--surface-2)}
+  .btn-stop{background:var(--warn-soft);color:var(--warn);border:1px solid #ecd6b4}
+
+  /* ---------- pre-flight ---------- */
+  .preflight{margin-top:16px;display:none}
+  .preflight.show{display:block;animation:rise .35s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .pf-inner{padding:20px;display:flex;flex-wrap:wrap;gap:22px 30px;align-items:center;justify-content:space-between}
+  .pf-found{font-size:15px;color:var(--ink-2)}
+  .pf-found b{font-family:Fraunces,serif;font-weight:600;font-size:30px;color:var(--ink);letter-spacing:-.02em}
+  .pf-found .est{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+  .modes{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:4px}
+  .seg button{background:transparent;color:var(--ink-2);font-size:13.5px;padding:8px 16px;min-height:auto;border-radius:8px}
+  .seg button.active{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(28,37,34,.08)}
+  .batch-size{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2)}
+  .batch-size input{width:74px;padding:8px 10px}
+  .batch-size.hide{display:none}
+
+  /* ---------- stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin:22px 0 14px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .stat .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+  .stat .v{font-family:Fraunces,serif;font-weight:600;font-size:30px;line-height:1.15;letter-spacing:-.02em;color:var(--ink);margin-top:2px}
+  .stat.accent .v{color:var(--accent)}
+  .stat .v small{font-family:Inter;font-size:13px;font-weight:500;color:var(--muted)}
+
+  /* ---------- status bar ---------- */
+  .statusbar{display:flex;align-items:center;gap:13px;min-height:26px;margin:6px 2px 16px;color:var(--ink-2);font-size:14px}
+  .spinner{width:15px;height:15px;border:2px solid var(--line-2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .bar{height:5px;background:var(--line);border-radius:99px;overflow:hidden;flex:1;max-width:280px}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--live));border-radius:99px;transition:width .35s ease}
+
+  /* ---------- table ---------- */
+  .tablehead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .tablehead h2{font-family:Fraunces,serif;font-weight:600;font-size:18px;margin:0;letter-spacing:-.01em}
+  .tablewrap{overflow:auto;border-radius:var(--r)}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:880px}
+  thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding:13px 15px;background:var(--surface-2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1}
+  tbody td{padding:13px 15px;border-bottom:1px solid var(--line);vertical-align:top;background:var(--surface)}
+  tbody tr:hover td{background:#fffdf8}
+  tbody tr{animation:rowin .3s ease both}
+  @keyframes rowin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .doc{font-weight:600}
+  .sub{color:var(--muted);font-size:12.5px}
+  .mono{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink)}
+  a{color:var(--accent);text-decoration:none;font-weight:500}a:hover{text-decoration:underline}
+  .pending{color:#bcb4a3;font-style:italic;font-size:12.5px}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 9px;border-radius:99px}
+  .pill.ok{background:var(--accent-soft);color:var(--accent-ink)}
+  .pill.no{background:var(--surface-2);color:var(--warn)}
+  @keyframes flash{0%{background:#fff4cc}100%{background:transparent}}
+  .flash{animation:flash 1.2s ease-out}
+  .empty{padding:60px 24px;text-align:center;color:var(--muted);background:var(--surface)}
+
+  /* ---------- batch footer ---------- */
+  .batchbar{display:none;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px;padding:16px 18px}
+  .batchbar.show{display:flex;animation:rise .3s ease both}
+  .batchbar .txt{font-size:14px;color:var(--ink-2)}
+  .batchbar .txt b{color:var(--ink)}
+  .note{font-size:12.5px;color:var(--muted)}
+  .mono-path{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);word-break:break-all}
+
+  @media(max-width:820px){
+    form{grid-template-columns:1fr}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .pf-inner{flex-direction:column;align-items:flex-start}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
+          <rect width="42" height="42" rx="12" fill="#0d7d6f"/>
+          <path d="M13 13.5L20 21l-7 7.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M22 13.5L29 21l-7 7.5" stroke="#9fded0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <div class="brandtext">
+        <h1>Practo Scraper</h1>
+        <p>by <b>FwdDeploy</b> · free · headless · $0</p>
+      </div>
+    </div>
+    <span class="live-pill" id="livepill"><span class="led"></span><span id="livetext">idle</span></span>
+  </div>
+
+  <!-- control -->
+  <div class="panel">
+    <form id="form">
+      <div class="modetabs" id="modetabs">
+        <button type="button" data-m="search" class="active">Search by city + type</button>
+        <button type="button" data-m="link">Paste a Practo link</button>
+      </div>
+
+      <div class="fields" id="f-search">
+        <div>
+          <label for="city">City</label>
+          <input type="text" id="city" value="bangalore" autocomplete="off" />
+        </div>
+        <div>
+          <label for="query">Clinic type / specialty / issue</label>
+          <input type="text" id="query" value="Dentist" autocomplete="off" />
+          <div class="row-check"><input type="checkbox" id="usesearch" /><label for="usesearch" style="margin:0;text-transform:none;letter-spacing:0;font-weight:500;font-size:13px;color:var(--ink-2)">Use Practo’s search engine (auto-on for non-specialty terms)</label></div>
+        </div>
+        <button type="submit" class="btn-primary check">Check results</button>
+      </div>
+
+      <div class="fields link hide" id="f-link">
+        <div>
+          <label for="url">Practo search/listing URL</label>
+          <input type="text" id="url" placeholder="https://www.practo.com/bangalore/dentist?… (paste your filtered Practo search)" autocomplete="off" />
+          <div class="row-check" style="color:var(--muted)">Tip: search on Practo with any filters you like, then copy the page URL here — you get that exact list.</div>
+        </div>
+        <button type="submit" class="btn-primary check">Check results</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- pre-flight -->
+  <div class="preflight" id="preflight">
+    <div class="panel pf-inner">
+      <div class="pf-found">
+        <b id="pf-total">0</b> <span id="pf-label">results found</span>
+        <span class="est" id="pf-est"></span>
+      </div>
+      <div class="modes">
+        <div class="seg" id="seg">
+          <button type="button" data-mode="all" class="active">Scrape all at once</button>
+          <button type="button" data-mode="batch">In batches</button>
+        </div>
+        <div class="batch-size hide" id="batchsize">of <input type="number" id="bsize" value="50" min="10" max="500" /> clinics</div>
+        <button type="button" class="btn-primary" id="start">Start scraping →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- stats -->
+  <div class="stats" id="stats" style="display:none">
+    <div class="stat"><div class="k">Doctors</div><div class="v" id="s-doc">0</div></div>
+    <div class="stat accent"><div class="k">Real phones</div><div class="v" id="s-ph">0</div></div>
+    <div class="stat"><div class="k">Emails</div><div class="v" id="s-em">0</div></div>
+    <div class="stat"><div class="k">Clinics done</div><div class="v" id="s-cl">0<small id="s-cl-tot"></small></div></div>
+    <div class="stat"><div class="k">Elapsed · cost</div><div class="v" id="s-time">0s<small> · $0</small></div></div>
+  </div>
+
+  <div class="statusbar" id="statusbar"></div>
+
+  <!-- results -->
+  <div class="tablehead">
+    <h2>Leads</h2>
+    <button class="btn-ghost" id="export" style="display:none">⬇ Export CSV</button>
+  </div>
+  <div class="panel tablewrap">
+    <table>
+      <thead><tr>
+        <th style="width:34px">#</th><th>Doctor</th><th>Hospital / Clinic</th>
+        <th>Phone</th><th>Email</th><th>Address</th><th>Map</th><th>Source</th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="8" class="empty">Enter a city + clinic type, then <b>Check results</b>.</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- batch footer -->
+  <div class="panel batchbar" id="batchbar">
+    <span class="txt" id="batchtxt"></span>
+    <button class="btn-primary" id="continue" style="display:none">Continue next batch →</button>
+    <button class="btn-stop" id="stop" style="display:none">Stop</button>
+    <span style="flex:1"></span>
+    <a id="dllink" href="#"><button class="btn-ghost">⬇ Download CSV</button></a>
+  </div>
+  <div class="note" id="savednote" style="margin-top:10px"></div>
+</div>
+
+<script>
+const $=(id)=>document.getElementById(id);
+const rowsEl=$("rows");
+let es=null, mode="all", state=null;
+
+function esc(s){return (s??"").toString().replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function setLive(cls,txt){const p=$("livepill");p.className="live-pill"+(cls?" "+cls:"");$("livetext").textContent=txt;}
+
+/* animated counter */
+function animateTo(el,target){
+  const cur=parseInt(el.dataset.v||"0",10); if(cur===target){el.dataset.v=target;return;}
+  el.dataset.v=target; const start=cur,t0=performance.now(),dur=420;
+  function step(t){const k=Math.min(1,(t-t0)/dur);const e=1-Math.pow(1-k,3);
+    el.firstChild.textContent=Math.round(start+(target-start)*e);
+    if(k<1)requestAnimationFrame(step);}
+  requestAnimationFrame(step);
+}
+function setStat(id,val){const el=$(id);if(el.firstChild&&el.firstChild.nodeType===3)animateTo(el,val);else el.textContent=val;}
+
+/* ---------- input mode toggle ---------- */
+let inputMode="search";
+$("modetabs").addEventListener("click",(e)=>{
+  const b=e.target.closest("button[data-m]"); if(!b)return;
+  inputMode=b.dataset.m;
+  [...$("modetabs").children].forEach(x=>x.classList.toggle("active",x===b));
+  $("f-search").classList.toggle("hide",inputMode!=="search");
+  $("f-link").classList.toggle("hide",inputMode!=="link");
+});
+
+/* ---------- pre-flight: check ---------- */
+$("form").addEventListener("submit",async (e)=>{
+  e.preventDefault();
+  const btns=document.querySelectorAll(".check");
+  btns.forEach(b=>{b.disabled=true;b.textContent="Checking…";});
+  setLive("busy","checking");
+  $("preflight").classList.remove("show");
+  try{
+    let qs, base;
+    if(inputMode==="link"){
+      const u=$("url").value.trim();
+      if(!u){ setStatus(false,"⚠ Paste a Practo URL first."); return; }
+      qs=new URLSearchParams({url:u}); base={url:u};
+    }else{
+      qs=new URLSearchParams({city:$("city").value.trim(),query:$("query").value.trim(),use_search:$("usesearch").checked});
+      base={city:$("city").value.trim(),query:$("query").value.trim()};
+    }
+    const r=await fetch("/api/count?"+qs); const m=await r.json();
+    if(!m.ok){ setLive("","idle"); setStatus(false,"⚠ "+(m.msg||"No results.")); return; }
+    state={...base, use_search:m.use_search||false, url:base.url||null, total:m.total};
+    if(m.use_search&&inputMode==="search"&&!$("usesearch").checked) setStatus(false,"Used Practo’s search engine for this term.");
+    $("pf-total").textContent=m.total.toLocaleString();
+    $("pf-label").textContent= inputMode==="link" ? "results from your Practo link" : (esc(state.query)+" in "+esc(state.city));
+    $("pf-est").textContent=`est. ${fmt(m.est_low)}–${fmt(m.est_high)} · ~${m.unique_est} unique clinics · $0`;
+    $("bsize").value=Math.min(50,m.total);
+    $("preflight").classList.add("show");
+    setLive("","ready");
+  }catch(err){ setLive("","idle"); setStatus(false,"⚠ Check failed: "+err); }
+  finally{ btns.forEach(b=>{b.disabled=false;b.textContent="Check results";}); }
+});
+
+function fmt(s){ s=Math.round(s); if(s<90)return s+"s"; const m=Math.round(s/60); return m+" min"; }
+
+/* mode toggle */
+$("seg").addEventListener("click",(e)=>{
+  const b=e.target.closest("button[data-mode]"); if(!b)return;
+  mode=b.dataset.mode;
+  [...$("seg").children].forEach(x=>x.classList.toggle("active",x===b));
+  $("batchsize").classList.toggle("hide",mode!=="all"?false:true);
+});
+
+/* ---------- start ---------- */
+$("start").addEventListener("click",()=>{
+  $("stats").style.display="grid";
+  $("export").style.display="inline-block";
+  rowsEl.innerHTML="";
+  ["s-doc","s-ph","s-em","s-cl"].forEach(id=>{$(id).dataset.v="0";$(id).firstChild.textContent="0";});
+  state.offset=0; state.t0=Date.now(); state.allRows=[]; state.clinicsDone=0;
+  state.batch = mode==="batch" ? Math.max(10,parseInt($("bsize").value,10)||50) : state.total;
+  $("preflight").classList.remove("show");
+  startTimer();
+  runBatch();
+});
+
+let timer=null;
+function startTimer(){clearInterval(timer);timer=setInterval(()=>{
+  const s=Math.round((Date.now()-state.t0)/1000); $("s-time").firstChild.textContent=fmt(s);
+},1000);}
+
+function runBatch(){
+  if(es)es.close();
+  $("batchbar").classList.remove("show");
+  setLive("on","scraping");
+  const p={offset:state.offset,limit:state.batch};
+  if(state.url) p.url=state.url; else { p.city=state.city; p.query=state.query; p.use_search=state.use_search; }
+  es=new EventSource("/api/scrape?"+new URLSearchParams(p));
+  es.onmessage=(ev)=>{
+    const m=JSON.parse(ev.data);
+    if(m.type==="status") setStatus(true,m.msg);
+    else if(m.type==="error"){ setStatus(false,"⚠ "+m.msg); finishAll(); }
+    else if(m.type==="doctors") addRows(m);
+    else if(m.type==="lead") applyLead(m);
+    else if(m.type==="batch_done") batchDone(m);
+  };
+  es.onerror=()=>{ setStatus(false,"Connection closed."); };
+}
+
+function addRows(m){
+  $("s-cl-tot").textContent="/"+m.grand_total+" total";
+  m.doctors.forEach(d=>{ state.allRows.push(d);
+    rowsEl.insertAdjacentHTML("beforeend",rowHtml(d)); });
+  setStat("s-doc",state.allRows.length);
+}
+function rowHtml(d){return `<tr id="r-${d.id}" data-clinic="${esc(d.clinic_key)}">
+  <td class="sub">${d.id+1}</td>
+  <td><div class="doc">${esc(d.doctor_name)}</div><div class="sub">${esc(d.specialty||"")}${d.recommendation?" · "+esc(d.recommendation):""}</div></td>
+  <td>${esc(d.clinic_name)}<div class="sub">${esc(d.locality)}, ${esc(d.city)}</div></td>
+  <td class="c-ph"><span class="pending">scraping…</span></td>
+  <td class="c-em"><span class="pending">—</span></td>
+  <td class="c-ad"><span class="pending">—</span></td>
+  <td class="c-mp"></td><td class="c-sr"></td></tr>`;}
+
+function applyLead(m){
+  const L=m.lead;
+  document.querySelectorAll(`tr[data-clinic="${CSS.escape(L.clinic_key)}"]`).forEach(tr=>{
+    const ph=tr.querySelector(".c-ph"),em=tr.querySelector(".c-em"),ad=tr.querySelector(".c-ad"),mp=tr.querySelector(".c-mp"),sr=tr.querySelector(".c-sr");
+    if(L.matched){
+      ph.innerHTML=`<span class="mono">${esc(L.phone)}</span>`;
+      em.innerHTML=L.email?`<span class="mono">${esc(L.email)}</span>`:`<span class="pending">—</span>`;
+      ad.innerHTML=`<span class="sub">${esc(L.address||"")}</span>`;
+      mp.innerHTML=L.maps_url?`<a href="${esc(L.maps_url)}" target="_blank">map ↗</a>`:"";
+      sr.innerHTML=`<span class="pill ok">google</span>`;
+      state.allRows.filter(r=>r.clinic_key===L.clinic_key).forEach(r=>Object.assign(r,{phone:L.phone,email:L.email,address:L.address,maps_url:L.maps_url,website:L.website,source:"google_maps"}));
+    }else{
+      ph.innerHTML=`<span class="pending">no match</span>`;
+      sr.innerHTML=`<span class="pill no">unverified</span>`;
+      state.allRows.filter(r=>r.clinic_key===L.clinic_key).forEach(r=>r.source="unverified");
+    }
+    ph.classList.add("flash");
+  });
+  state.clinicsDone=(state.clinicsDone||0)+1;
+  setStat("s-ph",document.querySelectorAll(".c-ph .mono").length);
+  setStat("s-em",document.querySelectorAll(".c-em .mono").length);
+  setStat("s-cl",state.clinicsDone);
+  setStatus(true,`Finding phone numbers… ${m.done}/${m.total} clinics in this batch`,Math.round(m.done/m.total*100));
+}
+
+function batchDone(m){
+  state.offset=m.next_offset;
+  state.csv=m.csv;
+  $("dllink").href="/api/download?path="+encodeURIComponent(m.csv);
+  $("savednote").innerHTML=`Saved: <span class="mono-path">${esc(m.csv)}</span>`;
+  if(mode==="batch" && m.remaining>0){
+    setLive("","paused");
+    setStatus(false,`Batch done. ${m.remaining} clinics remaining.`);
+    $("batchbar").classList.add("show");
+    $("batchtxt").innerHTML=`<b>${m.grand_total-m.remaining}</b> of <b>${m.grand_total}</b> doctors processed · ${m.remaining} left`;
+    $("continue").style.display="inline-block"; $("stop").style.display="inline-block";
+  }else{
+    finishAll();
+    $("batchbar").classList.add("show");
+    $("batchtxt").innerHTML=`✅ All done — <b>${document.querySelectorAll(".c-ph .mono").length}</b> phones from <b>${state.allRows.length}</b> doctors.`;
+    $("continue").style.display="none"; $("stop").style.display="none";
+  }
+}
+$("continue").addEventListener("click",()=>{ $("batchbar").classList.remove("show"); runBatch(); });
+$("stop").addEventListener("click",()=>{ finishAll(); $("batchbar").classList.remove("show"); });
+
+function finishAll(){ if(es)es.close(); clearInterval(timer); setLive("","done"); }
+
+function setStatus(spin,msg,pct){
+  $("statusbar").innerHTML=(spin?`<span class="spinner"></span>`:"")+`<span>${esc(msg)}</span>`+
+    (pct!=null?`<span class="bar"><i style="width:${pct}%"></i></span>`:"");
+}
+
+/* ---------- client-side CSV export (current view, anytime) ---------- */
+$("export").addEventListener("click",()=>{
+  const cols=[["doctor_name","Doctor"],["clinic_name","Clinic"],["specialty","Specialty"],["recommendation","Rec %"],
+    ["phone","Phone"],["email","Email"],["address","Address"],["locality","Locality"],["city","City"],
+    ["maps_url","Map"],["website","Website"],["source","Source"]];
+  const esc2=v=>{const s=(v??"").toString();return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const lines=[cols.map(c=>c[1]).join(",")];
+  state.allRows.forEach(r=>lines.push(cols.map(c=>esc2(r[c[0]])).join(",")));
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=`leads_${state.city||"practo"}_${state.query||"link"}.csv`.replace(/\s+/g,"-");a.click();
+});
+</script>
+</body>
+</html>
