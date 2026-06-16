@@ -149,6 +149,13 @@
     <span class="live-pill" id="livepill"><span class="led"></span><span id="livetext">idle</span></span>
   </div>
 
+  <!-- engine banner (GitHub Pages only) -->
+  <div id="enginebanner" style="display:none;margin-bottom:18px;padding:14px 18px;border-radius:12px;background:var(--warn-soft);border:1px solid #ecd6b4;color:#7a4e1e;font-size:14px;line-height:1.55">
+    ⚙️ <b>Scraping engine not running.</b> This page is hosted on GitHub, but the scraper runs on your Mac.
+    Start it once: <code style="font-family:'IBM Plex Mono',monospace;background:#fff;padding:2px 7px;border-radius:6px;border:1px solid #e7d8bd">cd ~/projects/practo-scraper &amp;&amp; source .venv/bin/activate &amp;&amp; python server.py</code>
+    then reload this page.
+  </div>
+
   <!-- control -->
   <div class="panel">
     <form id="form">
@@ -241,6 +248,18 @@ const $=(id)=>document.getElementById(id);
 const rowsEl=$("rows");
 let es=null, mode="all", state=null;
 
+// When this page is served from GitHub Pages, the scraping engine runs on YOUR Mac.
+// Same-origin (localhost) otherwise.
+const API = location.hostname.endsWith("github.io") ? "http://127.0.0.1:8765" : "";
+
+// Tell the user if the local engine isn't running (GitHub-hosted page only).
+async function checkBackend(){
+  if(!API) return;
+  try{ const r=await fetch(API+"/",{mode:"no-cors"}); $("enginebanner").style.display="none"; }
+  catch(e){ $("enginebanner").style.display="block"; }
+}
+window.addEventListener("load",checkBackend);
+
 function esc(s){return (s??"").toString().replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function setLive(cls,txt){const p=$("livepill");p.className="live-pill"+(cls?" "+cls:"");$("livetext").textContent=txt;}
 
@@ -282,7 +301,7 @@ $("form").addEventListener("submit",async (e)=>{
       qs=new URLSearchParams({city:$("city").value.trim(),query:$("query").value.trim(),use_search:$("usesearch").checked});
       base={city:$("city").value.trim(),query:$("query").value.trim()};
     }
-    const r=await fetch("/api/count?"+qs); const m=await r.json();
+    const r=await fetch(API+"/api/count?"+qs); const m=await r.json();
     if(!m.ok){ setLive("","idle"); setStatus(false,"⚠ "+(m.msg||"No results.")); return; }
     state={...base, use_search:m.use_search||false, url:base.url||null, total:m.total};
     if(m.use_search&&inputMode==="search"&&!$("usesearch").checked) setStatus(false,"Used Practo’s search engine for this term.");
@@ -330,7 +349,7 @@ function runBatch(){
   setLive("on","scraping");
   const p={offset:state.offset,limit:state.batch};
   if(state.url) p.url=state.url; else { p.city=state.city; p.query=state.query; p.use_search=state.use_search; }
-  es=new EventSource("/api/scrape?"+new URLSearchParams(p));
+  es=new EventSource(API+"/api/scrape?"+new URLSearchParams(p));
   es.onmessage=(ev)=>{
     const m=JSON.parse(ev.data);
     if(m.type==="status") setStatus(true,m.msg);
@@ -385,7 +404,7 @@ function applyLead(m){
 function batchDone(m){
   state.offset=m.next_offset;
   state.csv=m.csv;
-  $("dllink").href="/api/download?path="+encodeURIComponent(m.csv);
+  $("dllink").href=API+"/api/download?path="+encodeURIComponent(m.csv);
   $("savednote").innerHTML=`Saved: <span class="mono-path">${esc(m.csv)}</span>`;
   if(mode==="batch" && m.remaining>0){
     setLive("","paused");

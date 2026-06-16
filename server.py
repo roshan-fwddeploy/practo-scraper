@@ -21,11 +21,17 @@ import time
 from types import SimpleNamespace
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 
 import scrape  # reuse the scraping building blocks
 
 app = FastAPI()
+# Allow the GitHub Pages UI (https://<user>.github.io) to call this local server.
+# Server binds 127.0.0.1 only, so it's reachable from this machine's browser, not the internet.
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"],
+)
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOWNLOADS = os.path.expanduser("~/Downloads")
 
